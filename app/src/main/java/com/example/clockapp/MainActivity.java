@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,8 +17,10 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView clockTextView;
     private TextView dateTextView;
+    private Button toggleOverlayButton;
     private Handler handler;
     private Runnable updateTimeRunnable;
+    private boolean overlayEnabled = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
         clockTextView = findViewById(R.id.clockTextView);
         dateTextView = findViewById(R.id.dateTextView);
+        toggleOverlayButton = findViewById(R.id.toggleOverlayButton);
 
         handler = new Handler(Looper.getMainLooper());
         updateTimeRunnable = new Runnable() {
@@ -35,6 +39,14 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(this, 1000);
             }
         };
+
+        toggleOverlayButton.setOnClickListener(v -> {
+            overlayEnabled = !overlayEnabled;
+            updateToggleButton();
+            if (!overlayEnabled) {
+                stopService(new Intent(this, ClockOverlayService.class));
+            }
+        });
 
         requestOverlayPermission();
     }
@@ -50,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(updateTimeRunnable);
-        if (Settings.canDrawOverlays(this)) {
+        if (overlayEnabled && Settings.canDrawOverlays(this)) {
             Intent serviceIntent = new Intent(this, ClockOverlayService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(serviceIntent);
@@ -67,6 +79,10 @@ public class MainActivity extends AppCompatActivity {
                     Uri.parse("package:" + getPackageName()));
             startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST);
         }
+    }
+
+    private void updateToggleButton() {
+        toggleOverlayButton.setText(overlayEnabled ? "Disable Overlay" : "Enable Overlay");
     }
 
     private void updateTime() {
